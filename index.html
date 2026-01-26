@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Attendance Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="card" id="loginBox">
+  <h2>Student Login</h2>
+  <input id="roll" placeholder="Enter Roll Number">
+  <button onclick="sendOtp()">Send OTP</button>
+  <p>OTP will be sent to registered email</p>
+</div>
+
+<div class="card hidden" id="otpBox">
+  <h2>Verify OTP</h2>
+  <input id="otp" placeholder="Enter OTP">
+  <button onclick="verifyOtp()">Verify & Login</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
