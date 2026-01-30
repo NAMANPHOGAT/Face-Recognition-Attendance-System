@@ -1,24 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Student Attendance Portal</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <title>Attendance Portal</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<div class="card" id="loginBox">
-  <h2>Student Login</h2>
-  <input id="roll" placeholder="Enter Roll Number">
-  <button onclick="sendOtp()">Send OTP</button>
-  <p>OTP will be sent to registered email</p>
+<div class="container">
+
+    <!-- LOGIN -->
+    <div class="card" id="loginBox">
+        <h2>Attendance Login</h2>
+        <input type="text" id="roll" placeholder="Enter Roll Number">
+        <button onclick="sendOtp()">Send OTP</button>
+        <p id="loginMsg"></p>
+    </div>
+
+    <!-- OTP -->
+    <div class="card hidden" id="otpBox">
+        <h2>OTP Verification</h2>
+        <input type="text" id="otp" placeholder="Enter OTP">
+        <button onclick="verifyOtp()">Verify OTP</button>
+        <p id="otpMsg"></p>
+    </div>
+
+    <!-- FACE -->
+    <div class="card hidden" id="faceBox">
+        <h2>Face Recognition</h2>
+        <video id="video" autoplay></video>
+        <button onclick="captureFace()">Verify Face</button>
+        <p id="faceMsg"></p>
+    </div>
+
+    <!-- RESULT -->
+    <div class="card hidden" id="resultBox">
+        <h2>Attendance Status</h2>
+        <p id="resultText"></p>
+        <button onclick="location.reload()">Logout</button>
+    </div>
+
 </div>
 
-<div class="card hidden" id="otpBox">
-  <h2>Verify OTP</h2>
-  <input id="otp" placeholder="Enter OTP">
-  <button onclick="verifyOtp()">Verify & Login</button>
-</div>
-
-<script src="script.js"></script>
+<script src="/static/script.js"></script>
 </body>
 </html>
