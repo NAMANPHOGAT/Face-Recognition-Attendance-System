@@ -6,24 +6,37 @@
 </head>
 <body>
 
-<h2>Attendance Record – Roll No: {{ roll }}</h2>
+<h2>Attendance Record</h2>
+<p><strong>Roll Number:</strong> {{ roll }}</p>
+<p>This attendance is automatically generated using face recognition.</p>
 
 <table>
-    <tr>
-        <th>Date</th>
-        <th>Time</th>
-        <th>Status</th>
-    </tr>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Status</th>
+        </tr>
+    </thead>
 
-    {% for row in records %}
-    <tr>
-        <td>{{ row["Date"] }}</td>
-        <td>{{ row["Time"] }}</td>
-        <td>{{ row["Status"] }}</td>
-    </tr>
-    {% endfor %}
+    <tbody>
+        {% if records %}
+            {% for row in records %}
+            <tr>
+                <td>{{ row["Date"] }}</td>
+                <td>{{ row["Time"] }}</td>
+                <td>{{ row["Status"] }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="3">No attendance records found</td>
+            </tr>
+        {% endif %}
+    </tbody>
 </table>
 
+<br>
 <a href="/logout">Logout</a>
 
 </body>
