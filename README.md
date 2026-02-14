@@ -95,7 +95,7 @@ All data is in **`attendance.xlsx`** and is always read by the main backend at r
 
 - `Admin` sheet: `Employee ID`, `OTP Receiver Email`
 - `Students` sheet: `Roll No`, `Name`, `Email`
-- `Attendance` sheet: `Roll No`, `Name`, `Date`, `Time`, `Status`
+- `Attendance` sheet: `Roll No`, `Name`, `Date`, `Time`, `Status`, `Class`, `Professor`
 
 Only the admin camera route writes attendance rows.
 Students can only view their own rows.

@@ -33,7 +33,9 @@ GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
 
 ADMIN_HEADERS = ["Employee ID", "OTP Receiver Email"]
 STUDENT_HEADERS = ["Roll No", "Name", "Email"]
-ATTENDANCE_HEADERS = ["Roll No", "Name", "Date", "Time", "Status"]
+ATTENDANCE_HEADERS = ["Roll No", "Name", "Date", "Time", "Status", "Class", "Professor"]
+DEFAULT_CLASS_NAME = "Computer Vision"
+DEFAULT_PROFESSOR_NAME = "Prof. Aman"
 OTP_EXPIRY_MINUTES = 5
 
 
@@ -120,9 +122,17 @@ def ensure_workbook() -> None:
         attendance_ws = wb.create_sheet("Attendance")
         attendance_ws.append(ATTENDANCE_HEADERS)
         needs_save = True
-    elif attendance_ws.title != "Attendance":
-        attendance_ws.title = "Attendance"
-        needs_save = True
+    else:
+        if attendance_ws.title != "Attendance":
+            attendance_ws.title = "Attendance"
+            needs_save = True
+        attendance_header = [_normalize_header(v) for v in [cell.value for cell in attendance_ws[1]]]
+        if len(attendance_header) < 6:
+            attendance_ws.cell(row=1, column=6, value="Class")
+            needs_save = True
+        if len(attendance_header) < 7:
+            attendance_ws.cell(row=1, column=7, value="Professor")
+            needs_save = True
 
     # Seed one example attendance row for roll 101 so dashboard can be verified quickly.
     has_roll_101 = False
@@ -131,7 +141,7 @@ def ensure_workbook() -> None:
             has_roll_101 = True
             break
     if not has_roll_101:
-        attendance_ws.append(["101", "Student One", "2026-01-01", "09:00:00", "Present"])
+        attendance_ws.append(["101", "Student One", "2026-01-01", "09:00:00", "Present", DEFAULT_CLASS_NAME, DEFAULT_PROFESSOR_NAME])
         needs_save = True
 
     if wb.active.title not in {"Admin", "Students", "Attendance"}:
@@ -215,6 +225,8 @@ def get_attendance_for_roll(roll: str) -> list[dict[str, str]]:
             "date": _format_excel_date(row[2]),
             "time": _format_excel_time(row[3]),
             "status": str(row[4]).strip() if row[4] is not None else "",
+            "class_name": str(row[5]).strip() if len(row) > 5 and row[5] else DEFAULT_CLASS_NAME,
+            "professor_name": str(row[6]).strip() if len(row) > 6 and row[6] else DEFAULT_PROFESSOR_NAME,
         })
     return records
 
@@ -227,7 +239,7 @@ def mark_attendance(roll: str, name: str) -> dict[str, str]:
 
     wb = _open_workbook(data_only=False)
     ws = wb["Attendance"]
-    ws.append([roll, name, date_str, time_str, "Present"])
+    ws.append([roll, name, date_str, time_str, "Present", DEFAULT_CLASS_NAME, DEFAULT_PROFESSOR_NAME])
     _save_workbook(wb)
 
     return {"roll": roll, "name": name, "date": date_str, "time": time_str}

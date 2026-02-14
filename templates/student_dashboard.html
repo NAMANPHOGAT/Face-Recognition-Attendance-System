@@ -16,6 +16,8 @@
                     <th>Date</th>
                     <th>Time</th>
                     <th>Status</th>
+                    <th>Class</th>
+                    <th>Professor</th>
                 </tr>
             </thead>
             <tbody>
@@ -25,10 +27,12 @@
                         <td>{{ row.date }}</td>
                         <td>{{ row.time }}</td>
                         <td>{{ row.status }}</td>
+                        <td>{{ row.class_name }}</td>
+                        <td>{{ row.professor_name }}</td>
                     </tr>
                     {% endfor %}
                 {% else %}
-                    <tr><td colspan="3">No attendance records found.</td></tr>
+                    <tr><td colspan="5">No attendance records found.</td></tr>
                 {% endif %}
             </tbody>
         </table>
