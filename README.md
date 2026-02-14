@@ -8,7 +8,8 @@ This project has two portals:
    - Recognizes student face
    - Marks attendance in **`attendance.xlsx`** (date + time)
 2. **Student Portal**
-   - Student logs in with roll number + password
+   - Student logs in with roll number + OTP
+   - OTP is sent to student email from Excel
    - Views attendance from the same **`attendance.xlsx`** file (read-only)
 
 ---
@@ -61,11 +62,11 @@ Set environment variables before running:
 - `GMAIL_APP_PASSWORD` (required for SMTP login)
 
 ### Students
-Student credentials are read from the **`Students`** sheet in `attendance.xlsx`.
+Student login is OTP-based. Student contact emails are read from the **`Students`** sheet in `attendance.xlsx` (column 3).
 Default rows are created if missing:
 
-- Roll: `101`, Password: `pass101`
-- Roll: `102`, Password: `pass102`
+- Roll: `101`, Email: `student101@example.com`
+- Roll: `102`, Email: `student102@example.com`
 
 ---
 
@@ -92,7 +93,7 @@ known_faces/
 All data is in **`attendance.xlsx`** and is always read by the main backend at runtime:
 
 - `Admin` sheet: `Employee ID`, `OTP Receiver Email`
-- `Students` sheet: `Roll No`, `Name`, `Password`
+- `Students` sheet: `Roll No`, `Name`, `Email`
 - `Attendance` sheet: `Roll No`, `Name`, `Date`, `Time`, `Status`
 
 Only the admin camera route writes attendance rows.

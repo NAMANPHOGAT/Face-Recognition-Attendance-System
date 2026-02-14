@@ -27,11 +27,11 @@ BASE_DIR = Path(__file__).resolve().parent
 ATTENDANCE_FILE = BASE_DIR / "attendance.xlsx"
 KNOWN_FACES_DIR = BASE_DIR / "known_faces"
 
-ADMIN_OTP_SENDER = "N4manphogat.gmail.com"
+OTP_SENDER_EMAIL = "N4manphogat.gmail.com"
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
 
 ADMIN_HEADERS = ["Employee ID", "OTP Receiver Email"]
-STUDENT_HEADERS = ["Roll No", "Name", "Password"]
+STUDENT_HEADERS = ["Roll No", "Name", "Email"]
 ATTENDANCE_HEADERS = ["Roll No", "Name", "Date", "Time", "Status"]
 OTP_EXPIRY_MINUTES = 5
 
@@ -58,35 +58,37 @@ def ensure_workbook() -> None:
         wb = Workbook()
 
     admin_ws = (
-        wb["Admin"]
-        if "Admin" in wb.sheetnames
-        else _find_sheet_by_headers(wb, ADMIN_HEADERS)
+        wb["Admin"] if "Admin" in wb.sheetnames else _find_sheet_by_headers(wb, ADMIN_HEADERS)
     )
     students_ws = (
         wb["Students"]
         if "Students" in wb.sheetnames
-        else _find_sheet_by_headers(wb, STUDENT_HEADERS)
+        else _find_sheet_by_headers(wb, ["Roll No", "Name"])
     )
     attendance_ws = (
-        wb["Attendance"]
-        if "Attendance" in wb.sheetnames
-        else _find_sheet_by_headers(wb, ATTENDANCE_HEADERS)
+        wb["Attendance"] if "Attendance" in wb.sheetnames else _find_sheet_by_headers(wb, ATTENDANCE_HEADERS)
     )
 
     if admin_ws is None:
         admin_ws = wb.create_sheet("Admin")
         admin_ws.append(ADMIN_HEADERS)
-        admin_ws.append(["EMP001", ADMIN_OTP_SENDER])
+        admin_ws.append(["EMP001", OTP_SENDER_EMAIL])
     elif admin_ws.title != "Admin":
         admin_ws.title = "Admin"
 
     if students_ws is None:
         students_ws = wb.create_sheet("Students")
         students_ws.append(STUDENT_HEADERS)
-        students_ws.append([101, "Student One", "pass101"])
-        students_ws.append([102, "Student Two", "pass102"])
-    elif students_ws.title != "Students":
-        students_ws.title = "Students"
+        students_ws.append([101, "Student One", "student101@example.com"])
+        students_ws.append([102, "Student Two", "student102@example.com"])
+    else:
+        if students_ws.title != "Students":
+            students_ws.title = "Students"
+        header = [_normalize_header(v) for v in [cell.value for cell in students_ws[1]]]
+        if len(header) < 3:
+            students_ws.cell(row=1, column=3, value="Email")
+        elif header[2] in {"password", "pass", "pwd"}:
+            students_ws.cell(row=1, column=3, value="Email")
 
     if attendance_ws is None:
         attendance_ws = wb.create_sheet("Attendance")
@@ -111,20 +113,19 @@ def read_students() -> dict[str, dict[str, str]]:
             continue
         roll = str(row[0]).strip()
         students[roll] = {
-            "name": str(row[1]).strip() if row[1] else "",
-            "password": str(row[2]).strip() if row[2] else "",
+            "name": str(row[1]).strip() if len(row) > 1 and row[1] else "",
+            "email": str(row[2]).strip() if len(row) > 2 and row[2] else "",
         }
     return students
 
 
 def read_admin_settings() -> dict[str, str]:
-    """Always read admin login settings from attendance.xlsx."""
     ensure_workbook()
     wb = load_workbook(ATTENDANCE_FILE, data_only=True)
     ws = wb["Admin"]
 
     employee_id = "EMP001"
-    otp_receiver = ADMIN_OTP_SENDER
+    otp_receiver = OTP_SENDER_EMAIL
     for row in ws.iter_rows(min_row=2, values_only=True):
         if not row:
             continue
@@ -146,13 +147,7 @@ def get_attendance_for_roll(roll: str) -> list[dict[str, str]]:
     for row in ws.iter_rows(min_row=2, values_only=True):
         if not row or str(row[0]).strip() != str(roll):
             continue
-        records.append(
-            {
-                "date": str(row[2]),
-                "time": str(row[3]),
-                "status": str(row[4]),
-            }
-        )
+        records.append({"date": str(row[2]), "time": str(row[3]), "status": str(row[4])})
     return records
 
 
@@ -170,20 +165,18 @@ def mark_attendance(roll: str, name: str) -> dict[str, str]:
     return {"roll": roll, "name": name, "date": date_str, "time": time_str}
 
 
-def _send_admin_otp(otp: str, receiver_email: str) -> None:
+def _send_otp(otp: str, receiver_email: str, audience: str) -> None:
     if not GMAIL_APP_PASSWORD:
         raise RuntimeError("Set GMAIL_APP_PASSWORD env var to send OTP email.")
 
     message = EmailMessage()
-    message["Subject"] = "Admin Login OTP"
-    message["From"] = ADMIN_OTP_SENDER
+    message["Subject"] = f"{audience} Login OTP"
+    message["From"] = OTP_SENDER_EMAIL
     message["To"] = receiver_email
-    message.set_content(
-        f"Your OTP is: {otp}\nValid for {OTP_EXPIRY_MINUTES} minutes.\n"
-    )
+    message.set_content(f"Your OTP is: {otp}\nValid for {OTP_EXPIRY_MINUTES} minutes.\n")
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(ADMIN_OTP_SENDER, GMAIL_APP_PASSWORD)
+        smtp.login(OTP_SENDER_EMAIL, GMAIL_APP_PASSWORD)
         smtp.send_message(message)
 
 
@@ -235,17 +228,13 @@ def _load_known_face_encodings() -> list[dict[str, object]]:
             image = face_recognition.load_image_file(str(image_file))
             encodings = face_recognition.face_encodings(image)
             if encodings:
-                known_faces.append(
-                    {"roll": roll, "name": metadata["name"], "encoding": encodings[0]}
-                )
+                known_faces.append({"roll": roll, "name": metadata["name"], "encoding": encodings[0]})
     return known_faces
 
 
 def _recognize_student_from_frame(data_url: str) -> dict[str, str] | None:
     if face_recognition is None or np is None:
-        raise RuntimeError(
-            "face_recognition dependency is missing. Install packages from requirements.txt"
-        )
+        raise RuntimeError("face_recognition dependency is missing. Install packages from requirements.txt")
 
     payload = _decode_data_url_to_bytes(data_url)
     pil_image = Image.open(io.BytesIO(payload)).convert("RGB")
@@ -277,17 +266,59 @@ def home():
 @app.route("/student/login", methods=["GET", "POST"])
 def student_login():
     if request.method == "POST":
+        action = request.form.get("action", "login")
         roll = request.form.get("roll", "").strip()
-        password = request.form.get("password", "").strip()
-        student = read_students().get(roll)
+        students = read_students()
+        student = students.get(roll)
 
-        if student and student["password"] == password:
-            session.clear()
-            session["student_roll"] = roll
-            return redirect(url_for("student_dashboard"))
-        return render_template(
-            "student_login.html", error="Invalid roll number or password"
-        )
+        if not student:
+            return render_template("student_login.html", error="Invalid roll number", roll=roll)
+
+        student_email = student.get("email", "")
+        if "@" not in student_email:
+            return render_template(
+                "student_login.html",
+                error="Student email missing in Excel. Update Students sheet column 3.",
+                roll=roll,
+            )
+
+        if action == "send_otp":
+            otp = f"{secrets.randbelow(1_000_000):06d}"
+            expiry = datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)
+            session["pending_student_roll"] = roll
+            session["student_otp"] = otp
+            session["student_otp_expiry"] = expiry.isoformat()
+            try:
+                _send_otp(otp, student_email, "Student")
+            except Exception as exc:
+                return render_template("student_login.html", error=f"OTP sending failed: {exc}", roll=roll)
+
+            return render_template(
+                "student_login.html",
+                message=f"OTP sent from {OTP_SENDER_EMAIL} to {student_email}.",
+                roll=roll,
+            )
+
+        entered_otp = request.form.get("otp", "").strip()
+        saved_otp = session.get("student_otp")
+        saved_roll = session.get("pending_student_roll")
+        expiry_str = session.get("student_otp_expiry")
+
+        if not entered_otp or not saved_otp or not expiry_str:
+            return render_template("student_login.html", error="Please request OTP first.", roll=roll)
+
+        if saved_roll != roll:
+            return render_template("student_login.html", error="OTP belongs to different roll number.", roll=roll)
+
+        if datetime.now() > datetime.fromisoformat(expiry_str):
+            return render_template("student_login.html", error="OTP expired. Please request a new OTP.", roll=roll)
+
+        if entered_otp != saved_otp:
+            return render_template("student_login.html", error="Invalid OTP", roll=roll)
+
+        session.clear()
+        session["student_roll"] = roll
+        return redirect(url_for("student_dashboard"))
 
     return render_template("student_login.html")
 
@@ -311,9 +342,7 @@ def admin_login():
         otp_receiver = admin_settings["otp_receiver"]
 
         if employee_id != admin_employee_id:
-            return render_template(
-                "admin_login.html", error="Invalid employee ID", employee_id=employee_id
-            )
+            return render_template("admin_login.html", error="Invalid employee ID", employee_id=employee_id)
 
         if action == "send_otp":
             otp = f"{secrets.randbelow(1_000_000):06d}"
@@ -323,17 +352,13 @@ def admin_login():
             session["admin_otp_expiry"] = expiry.isoformat()
 
             try:
-                _send_admin_otp(otp, otp_receiver)
+                _send_otp(otp, otp_receiver, "Admin")
             except Exception as exc:
-                return render_template(
-                    "admin_login.html",
-                    error=f"OTP sending failed: {exc}",
-                    employee_id=employee_id,
-                )
+                return render_template("admin_login.html", error=f"OTP sending failed: {exc}", employee_id=employee_id)
 
             return render_template(
                 "admin_login.html",
-                message=f"OTP sent from {ADMIN_OTP_SENDER} to {otp_receiver}.",
+                message=f"OTP sent from {OTP_SENDER_EMAIL} to {otp_receiver}.",
                 employee_id=employee_id,
             )
 
@@ -343,30 +368,16 @@ def admin_login():
         expiry_str = session.get("admin_otp_expiry")
 
         if not entered_otp or not saved_otp or not expiry_str:
-            return render_template(
-                "admin_login.html",
-                error="Please request OTP first.",
-                employee_id=employee_id,
-            )
+            return render_template("admin_login.html", error="Please request OTP first.", employee_id=employee_id)
 
         if saved_employee_id != employee_id:
-            return render_template(
-                "admin_login.html",
-                error="OTP was generated for different employee ID.",
-                employee_id=employee_id,
-            )
+            return render_template("admin_login.html", error="OTP was generated for different employee ID.", employee_id=employee_id)
 
         if datetime.now() > datetime.fromisoformat(expiry_str):
-            return render_template(
-                "admin_login.html",
-                error="OTP expired. Please request a new OTP.",
-                employee_id=employee_id,
-            )
+            return render_template("admin_login.html", error="OTP expired. Please request a new OTP.", employee_id=employee_id)
 
         if entered_otp != saved_otp:
-            return render_template(
-                "admin_login.html", error="Invalid OTP", employee_id=employee_id
-            )
+            return render_template("admin_login.html", error="Invalid OTP", employee_id=employee_id)
 
         session.clear()
         session["admin_authenticated"] = True
@@ -396,21 +407,13 @@ def admin_recognize():
     except RuntimeError as exc:
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception:
-        return jsonify(
-            {"success": False, "message": "Unable to process camera frame."}
-        ), 400
+        return jsonify({"success": False, "message": "Unable to process camera frame."}), 400
 
     if not recognized:
         return jsonify({"success": False, "message": "No known student face matched."})
 
     entry = mark_attendance(recognized["roll"], recognized["name"])
-    return jsonify(
-        {
-            "success": True,
-            "message": "Attendance marked successfully.",
-            "attendance": entry,
-        }
-    )
+    return jsonify({"success": True, "message": "Attendance marked successfully.", "attendance": entry})
 
 
 @app.route("/logout")
