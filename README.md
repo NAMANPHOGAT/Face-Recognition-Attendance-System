@@ -57,8 +57,7 @@ Then open:
 - Password is always a one-time OTP sent from `N4manphogat.gmail.com`
 
 Set environment variables before running:
-- `ADMIN_EMPLOYEE_ID` (optional override)
-- `ADMIN_OTP_RECEIVER` (where OTP should be delivered)
+- Admin auth config now comes from the `Admin` sheet in `attendance.xlsx` (`Employee ID`, `OTP Receiver Email`).
 - `GMAIL_APP_PASSWORD` (required for SMTP login)
 
 ### Students
@@ -90,8 +89,9 @@ known_faces/
 
 ## 6) How attendance is stored
 
-All data is in **`attendance.xlsx`**:
+All data is in **`attendance.xlsx`** and is always read by the main backend at runtime:
 
+- `Admin` sheet: `Employee ID`, `OTP Receiver Email`
 - `Students` sheet: `Roll No`, `Name`, `Password`
 - `Attendance` sheet: `Roll No`, `Name`, `Date`, `Time`, `Status`
 

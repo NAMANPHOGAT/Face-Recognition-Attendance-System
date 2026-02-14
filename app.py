@@ -27,11 +27,10 @@ BASE_DIR = Path(__file__).resolve().parent
 ATTENDANCE_FILE = BASE_DIR / "attendance.xlsx"
 KNOWN_FACES_DIR = BASE_DIR / "known_faces"
 
-ADMIN_EMPLOYEE_ID = os.environ.get("ADMIN_EMPLOYEE_ID", "EMP001")
 ADMIN_OTP_SENDER = "N4manphogat.gmail.com"
-ADMIN_OTP_RECEIVER = os.environ.get("ADMIN_OTP_RECEIVER", ADMIN_OTP_SENDER)
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
 
+ADMIN_HEADERS = ["Employee ID", "OTP Receiver Email"]
 STUDENT_HEADERS = ["Roll No", "Name", "Password"]
 ATTENDANCE_HEADERS = ["Roll No", "Name", "Date", "Time", "Status"]
 OTP_EXPIRY_MINUTES = 5
@@ -52,12 +51,17 @@ def _find_sheet_by_headers(workbook, expected_headers: list[str]):
 
 
 def ensure_workbook() -> None:
-    """Ensure attendance.xlsx contains Students and Attendance sheets."""
+    """Ensure attendance.xlsx contains Admin, Students and Attendance sheets."""
     if ATTENDANCE_FILE.exists():
         wb = load_workbook(ATTENDANCE_FILE)
     else:
         wb = Workbook()
 
+    admin_ws = (
+        wb["Admin"]
+        if "Admin" in wb.sheetnames
+        else _find_sheet_by_headers(wb, ADMIN_HEADERS)
+    )
     students_ws = (
         wb["Students"]
         if "Students" in wb.sheetnames
@@ -68,6 +72,13 @@ def ensure_workbook() -> None:
         if "Attendance" in wb.sheetnames
         else _find_sheet_by_headers(wb, ATTENDANCE_HEADERS)
     )
+
+    if admin_ws is None:
+        admin_ws = wb.create_sheet("Admin")
+        admin_ws.append(ADMIN_HEADERS)
+        admin_ws.append(["EMP001", ADMIN_OTP_SENDER])
+    elif admin_ws.title != "Admin":
+        admin_ws.title = "Admin"
 
     if students_ws is None:
         students_ws = wb.create_sheet("Students")
@@ -83,8 +94,8 @@ def ensure_workbook() -> None:
     elif attendance_ws.title != "Attendance":
         attendance_ws.title = "Attendance"
 
-    if wb.active.title not in {"Students", "Attendance"}:
-        wb.active = wb["Students"]
+    if wb.active.title not in {"Admin", "Students", "Attendance"}:
+        wb.active = wb["Admin"]
 
     wb.save(ATTENDANCE_FILE)
 
@@ -104,6 +115,26 @@ def read_students() -> dict[str, dict[str, str]]:
             "password": str(row[2]).strip() if row[2] else "",
         }
     return students
+
+
+def read_admin_settings() -> dict[str, str]:
+    """Always read admin login settings from attendance.xlsx."""
+    ensure_workbook()
+    wb = load_workbook(ATTENDANCE_FILE, data_only=True)
+    ws = wb["Admin"]
+
+    employee_id = "EMP001"
+    otp_receiver = ADMIN_OTP_SENDER
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row:
+            continue
+        if row[0]:
+            employee_id = str(row[0]).strip()
+        if len(row) > 1 and row[1]:
+            otp_receiver = str(row[1]).strip()
+        break
+
+    return {"employee_id": employee_id, "otp_receiver": otp_receiver}
 
 
 def get_attendance_for_roll(roll: str) -> list[dict[str, str]]:
@@ -139,14 +170,14 @@ def mark_attendance(roll: str, name: str) -> dict[str, str]:
     return {"roll": roll, "name": name, "date": date_str, "time": time_str}
 
 
-def _send_admin_otp(otp: str) -> None:
+def _send_admin_otp(otp: str, receiver_email: str) -> None:
     if not GMAIL_APP_PASSWORD:
         raise RuntimeError("Set GMAIL_APP_PASSWORD env var to send OTP email.")
 
     message = EmailMessage()
     message["Subject"] = "Admin Login OTP"
     message["From"] = ADMIN_OTP_SENDER
-    message["To"] = ADMIN_OTP_RECEIVER
+    message["To"] = receiver_email
     message.set_content(
         f"Your OTP is: {otp}\nValid for {OTP_EXPIRY_MINUTES} minutes.\n"
     )
@@ -275,7 +306,11 @@ def admin_login():
         action = request.form.get("action", "login")
         employee_id = request.form.get("employee_id", "").strip()
 
-        if employee_id != ADMIN_EMPLOYEE_ID:
+        admin_settings = read_admin_settings()
+        admin_employee_id = admin_settings["employee_id"]
+        otp_receiver = admin_settings["otp_receiver"]
+
+        if employee_id != admin_employee_id:
             return render_template(
                 "admin_login.html", error="Invalid employee ID", employee_id=employee_id
             )
@@ -288,7 +323,7 @@ def admin_login():
             session["admin_otp_expiry"] = expiry.isoformat()
 
             try:
-                _send_admin_otp(otp)
+                _send_admin_otp(otp, otp_receiver)
             except Exception as exc:
                 return render_template(
                     "admin_login.html",
@@ -298,7 +333,7 @@ def admin_login():
 
             return render_template(
                 "admin_login.html",
-                message=f"OTP sent from {ADMIN_OTP_SENDER}.",
+                message=f"OTP sent from {ADMIN_OTP_SENDER} to {otp_receiver}.",
                 employee_id=employee_id,
             )
 
