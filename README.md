@@ -45,9 +45,9 @@ python app.py
 
 Then open:
 
-- Home: `http://127.0.0.1:5000/`
-- Admin login: `http://127.0.0.1:5000/admin/login`
-- Student login: `http://127.0.0.1:5000/student/login`
+- Home: `http://ip address/`
+- Admin login: `http://ip address/admin/login`
+- Student login: `http://ip address/student/login`
 
 ---
 
@@ -55,7 +55,7 @@ Then open:
 
 ### Admin
 - Employee ID login (default): `EMP001`
-- Password is always a one-time OTP sent from `N4manphogat.gmail.com`
+- Password is always a one-time OTP sent from `N4manphogat@gmail.com`
 
 Set environment variables before running:
 - Admin auth config now comes from the `Admin` sheet in `attendance.xlsx` (`Employee ID`, `OTP Receiver Email`).
