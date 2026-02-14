@@ -53,10 +53,13 @@ Then open:
 ## 4) Default credentials
 
 ### Admin
-- Username: `admin`
-- Password: `admin123`
+- Employee ID login (default): `EMP001`
+- Password is always a one-time OTP sent from `N4manphogat.gmail.com`
 
-(You can override with env vars: `ADMIN_USERNAME`, `ADMIN_PASSWORD`.)
+Set environment variables before running:
+- `ADMIN_EMPLOYEE_ID` (optional override)
+- `ADMIN_OTP_RECEIVER` (where OTP should be delivered)
+- `GMAIL_APP_PASSWORD` (required for SMTP login)
 
 ### Students
 Student credentials are read from the **`Students`** sheet in `attendance.xlsx`.
