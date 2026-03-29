@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+    <button id="themeToggle" class="btn theme-toggle" type="button">🌙 Dark</button>
+    <div class="container card">
+        <h2>Admin / Camera Platform Login</h2>
+        <form method="POST">
+            <input type="text" name="employee_id" placeholder="Employee ID" value="{{ employee_id or '' }}" required />
+            <input type="text" name="otp" placeholder="Enter OTP" />
+            <div class="button-group">
+                <button class="btn btn-secondary" type="submit" name="action" value="send_otp">Send OTP</button>
+                <button class="btn" type="submit" name="action" value="login">Login with OTP</button>
+            </div>
+        </form>
+        {% if message %}<p>{{ message }}</p>{% endif %}
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+        <p><a href="{{ url_for('home') }}">Back to home</a></p>
+    </div>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>
