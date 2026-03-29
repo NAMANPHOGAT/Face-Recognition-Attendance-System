@@ -1,89 +1,161 @@
-body {
-    font-family: Arial, sans-serif;
-    background: #f3f6fb;
-    margin: 0;
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-}
-
-.container {
-    width: min(92vw, 520px);
-}
-
-.card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-    padding: 1.5rem;
-    text-align: center;
-}
-
-.wide {
-    width: min(95vw, 860px);
-}
-
-input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.7rem;
-    margin: 0.45rem 0;
-    border-radius: 8px;
-    border: 1px solid #d0d7e2;
-}
-
-.button-group {
-    margin-top: 1rem;
-    display: flex;
-    gap: 0.6rem;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.btn {
-    display: inline-block;
-    border: none;
-    cursor: pointer;
-    text-decoration: none;
-    background: #0b63f6;
-    color: white;
-    padding: 0.65rem 1rem;
-    border-radius: 8px;
-}
-
-.btn-secondary {
-    background: #334155;
-}
-
-.btn-danger {
-    background: #dc2626;
-}
-
-.error {
-    color: #dc2626;
-    font-weight: 600;
-}
-
-video {
-    width: 100%;
-    max-width: 520px;
-    border-radius: 10px;
-    border: 1px solid #dde5f0;
-    margin: 0.5rem 0;
-}
-
-table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1rem 0;
-}
-
-th,
-td {
-    border: 1px solid #d6deea;
-    padding: 0.6rem;
-}
-
-th {
-    background: #eef3fd;
-}
+diff --git a/static/style.css b/static/style.css
+index 1907b4cf5087e977960053ab0a1c7862567bb2bb..43a2bab979bcf0a50cfb805489f434d3fdc6bc68 100644
+--- a/static/style.css
++++ b/static/style.css
+@@ -1,41 +1,115 @@
+-body {
+-    font-family: Arial;
+-    background: #f4f4f4;
+-    text-align: center;
+-}
+-
+-.login-box {
+-    background: white;
+-    padding: 30px;
+-    width: 300px;
+-    margin: 100px auto;
+-    border-radius: 8px;
+-}
+-
+-input {
+-    width: 90%;
+-    padding: 10px;
+-    margin: 10px 0;
+-}
+-
+-button {
+-    padding: 10px 20px;
+-    background: #007bff;
+-    color: white;
+-    border: none;
+-}
+-
+-table {
+-    margin: auto;
+-    border-collapse: collapse;
+-    width: 70%;
+-}
+-
+-th, td {
+-    border: 1px solid black;
+-    padding: 10px;
+-}
+-
+-.error {
+-    color: red;
+-}
++:root {
++    --bg-overlay: rgba(243, 246, 251, 0.78);
++    --text: #0f172a;
++    --card-bg: rgba(255, 255, 255, 0.9);
++    --border: #d0d7e2;
++    --table-border: #d6deea;
++    --th-bg: #eef3fd;
++}
++
++:root[data-theme="dark"] {
++    --bg-overlay: rgba(15, 23, 42, 0.82);
++    --text: #e2e8f0;
++    --card-bg: rgba(15, 23, 42, 0.88);
++    --border: #334155;
++    --table-border: #334155;
++    --th-bg: #1e293b;
++}
++
++body {
++    font-family: Arial, sans-serif;
++    margin: 0;
++    min-height: 100vh;
++    display: grid;
++    place-items: center;
++    color: var(--text);
++    position: relative;
++    background: url('/static/sharda_university_requested.png') center center / cover no-repeat fixed;
++}
++
++body::before {
++    content: "";
++    position: fixed;
++    inset: 0;
++    background: var(--bg-overlay);
++    z-index: -1;
++}
++
++.theme-toggle {
++    position: fixed;
++    top: 12px;
++    right: 12px;
++    z-index: 10;
++}
++
++.container {
++    width: min(92vw, 520px);
++}
++
++.card {
++    background: var(--card-bg);
++    border-radius: 12px;
++    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
++    padding: 1.5rem;
++    text-align: center;
++    backdrop-filter: blur(2px);
++}
++
++.wide {
++    width: min(95vw, 860px);
++}
++
++input {
++    width: 100%;
++    box-sizing: border-box;
++    padding: 0.7rem;
++    margin: 0.45rem 0;
++    border-radius: 8px;
++    border: 1px solid var(--border);
++    background: transparent;
++    color: var(--text);
++}
++
++.button-group {
++    margin-top: 1rem;
++    display: flex;
++    gap: 0.6rem;
++    justify-content: center;
++    flex-wrap: wrap;
++}
++
++.btn {
++    display: inline-block;
++    border: none;
++    cursor: pointer;
++    text-decoration: none;
++    background: #0b63f6;
++    color: white;
++    padding: 0.65rem 1rem;
++    border-radius: 8px;
++}
++
++.btn-secondary { background: #334155; }
++.btn-danger { background: #dc2626; }
++.error { color: #ef4444; font-weight: 600; }
++
++video {
++    width: 100%;
++    max-width: 520px;
++    border-radius: 10px;
++    border: 1px solid var(--border);
++    margin: 0.5rem 0;
++}
++
++table {
++    border-collapse: collapse;
++    width: 100%;
++    margin: 1rem 0;
++}
++
++th, td {
++    border: 1px solid var(--table-border);
++    padding: 0.6rem;
++}
++
++th { background: var(--th-bg); }
