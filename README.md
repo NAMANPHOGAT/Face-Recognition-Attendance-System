@@ -33,7 +33,6 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
-set GMAIL_APP_PASSWORD=your_16_character_app_password
 ```
 
 ---
@@ -63,6 +62,7 @@ Set environment variables before running:
 - Default first employee row uses OTP receiver email: `anyone@example.com`
 - `GMAIL_APP_PASSWORD` (required for SMTP login)
 - If `GMAIL_APP_PASSWORD` is missing, admin page shows OTP on-screen as fallback for local testing.
+- If Gmail auth fails (535 / invalid app password), admin login falls back to on-screen OTP instead of blocking login.
 
 ### Students
 Student login is OTP-based. Student contact emails are read from the **`Students`** sheet in `attendance.xlsx` (column 3).
@@ -124,3 +124,7 @@ Students can only view their own rows.
   - Allow browser camera permission
   - Use HTTPS/localhost contexts where browser requires secure camera access
 
+
+## 8) Background image
+
+- UI background image file: `static/sharda_university_requested.png` (replace this file with your preferred Sharda University image).
