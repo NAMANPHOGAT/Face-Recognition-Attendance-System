@@ -33,10 +33,13 @@ GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
 
 ADMIN_HEADERS = ["Employee ID", "OTP Receiver Email"]
 STUDENT_HEADERS = ["Roll No", "Name", "Email"]
-ATTENDANCE_HEADERS = ["Roll No", "Name", "Date", "Time", "Status", "Class", "Professor"]
+ATTENDANCE_HEADERS = ["Roll No", "Name", "Date", "Time", "Status", "Class", "Professor", "Employee ID"]
 DEFAULT_CLASS_NAME = ""
 DEFAULT_PROFESSOR_NAME = ""
+PRESENT_CUTOFF_TIME = os.environ.get("PRESENT_CUTOFF_TIME", "10:00")
 OTP_EXPIRY_MINUTES = 5
+FACE_MATCH_THRESHOLD = float(os.environ.get("FACE_MATCH_THRESHOLD", "0.55"))
+RECOGNITION_FRAME_WIDTH = int(os.environ.get("RECOGNITION_FRAME_WIDTH", "640"))
 
 
 def _normalize_header(value: object) -> str:
@@ -131,6 +134,9 @@ def ensure_workbook() -> None:
         if len(attendance_header) < 7:
             attendance_ws.cell(row=1, column=7, value="Professor")
             needs_save = True
+        if len(attendance_header) < 8:
+            attendance_ws.cell(row=1, column=8, value="Employee ID")
+            needs_save = True
 
     # Seed workbook rows to match default template when sheets are empty.
     if students_ws.max_row <= 1:
@@ -143,8 +149,8 @@ def ensure_workbook() -> None:
         if row and any(cell not in (None, "") for cell in row)
     ]
     if not attendance_data_rows:
-        attendance_ws.append([101, "Student One", "14-Feb", "09:50", "PRESENT", "", ""])
-        attendance_ws.append([101, "Student One", "14-Feb", "10:40", "ABSENT", "", ""])
+        attendance_ws.append([101, "Student One", "14-Feb", "09:50", "PRESENT", "", "", "EMP001"])
+        attendance_ws.append([101, "Student One", "14-Feb", "10:40", "ABSENT", "", "", "EMP001"])
         needs_save = True
 
     if wb.active.title not in {"Admin", "Students", "Attendance"}:
@@ -193,8 +199,6 @@ def read_admin_settings() -> dict[str, str]:
     return {"employee_id": employee_id, "otp_receiver": otp_receiver}
 
 
-
-
 def _format_excel_date(value: object) -> str:
     if value is None:
         return ""
@@ -230,22 +234,35 @@ def get_attendance_for_roll(roll: str) -> list[dict[str, str]]:
             "status": str(row[4]).strip() if row[4] is not None else "",
             "class_name": str(row[5]).strip() if len(row) > 5 and row[5] else DEFAULT_CLASS_NAME,
             "professor_name": str(row[6]).strip() if len(row) > 6 and row[6] else DEFAULT_PROFESSOR_NAME,
+            "employee_id": str(row[7]).strip() if len(row) > 7 and row[7] else "",
         })
     return records
 
 
-def mark_attendance(roll: str, name: str) -> dict[str, str]:
+def _attendance_status_for_now(now: datetime) -> str:
+    cutoff_raw = PRESENT_CUTOFF_TIME.strip()
+    try:
+        cutoff_time = datetime.strptime(cutoff_raw, "%H:%M").time()
+    except ValueError:
+        cutoff_time = datetime.strptime("10:00", "%H:%M").time()
+    return "PRESENT" if now.time() <= cutoff_time else "ABSENT"
+
+
+def mark_attendance(roll: str, name: str, employee_id: str) -> dict[str, str]:
     ensure_workbook()
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H:%M:%S")
 
+    # Always mark PRESENT when a student is successfully recognized by the system.
+    status = "PRESENT"
+
     wb = _open_workbook(data_only=False)
     ws = wb["Attendance"]
-    ws.append([roll, name, date_str, time_str, "Present", DEFAULT_CLASS_NAME, DEFAULT_PROFESSOR_NAME])
+    ws.append([roll, name, date_str, time_str, status, DEFAULT_CLASS_NAME, DEFAULT_PROFESSOR_NAME, employee_id])
     _save_workbook(wb)
 
-    return {"roll": roll, "name": name, "date": date_str, "time": time_str}
+    return {"roll": roll, "name": name, "date": date_str, "time": time_str, "status": status, "employee_id": employee_id}
 
 
 def _smtp_password() -> str:
@@ -254,8 +271,6 @@ def _smtp_password() -> str:
 
 def _is_smtp_configured() -> bool:
     return bool(_smtp_password())
-
-
 
 
 def _is_smtp_error_recoverable(error: Exception) -> bool:
@@ -344,12 +359,20 @@ def _load_known_face_encodings() -> list[dict[str, object]]:
     return known_faces
 
 
+def _resize_frame_for_recognition(image: Image.Image) -> Image.Image:
+    if image.width <= RECOGNITION_FRAME_WIDTH:
+        return image
+    ratio = RECOGNITION_FRAME_WIDTH / float(image.width)
+    new_size = (RECOGNITION_FRAME_WIDTH, max(1, int(image.height * ratio)))
+    return image.resize(new_size, Image.Resampling.LANCZOS)
+
 def _recognize_student_from_frame(data_url: str) -> dict[str, str] | None:
     if face_recognition is None or np is None:
-        raise RuntimeError("face_recognition dependency is missing. Install packages from requirements.txt")
+        raise RuntimeError("face_recognition dependency is missing. Install with: pip install -r requirements-face.txt")
 
     payload = _decode_data_url_to_bytes(data_url)
     pil_image = Image.open(io.BytesIO(payload)).convert("RGB")
+    pil_image = _resize_frame_for_recognition(pil_image)
     frame_encodings = face_recognition.face_encodings(np.array(pil_image))
     if not frame_encodings:
         return None
@@ -364,12 +387,10 @@ def _recognize_student_from_frame(data_url: str) -> dict[str, str] | None:
         if len(distances) == 0:
             continue
         best_idx = int(distances.argmin())
-        if distances[best_idx] <= 0.45:
+        if distances[best_idx] <= FACE_MATCH_THRESHOLD:
             best_match = known_faces[best_idx]
             return {"roll": str(best_match["roll"]), "name": str(best_match["name"])}
     return None
-
-
 
 
 @app.errorhandler(RuntimeError)
@@ -556,7 +577,8 @@ def admin_recognize():
     if not recognized:
         return jsonify({"success": False, "message": "No known student face matched."})
 
-    entry = mark_attendance(recognized["roll"], recognized["name"])
+    employee_id = str(session.get("admin_employee_id", "")).strip() or read_admin_settings()["employee_id"]
+    entry = mark_attendance(recognized["roll"], recognized["name"], employee_id)
     return jsonify({"success": True, "message": "Attendance marked successfully.", "attendance": entry})
 
 
