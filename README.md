@@ -129,3 +129,54 @@ Students can only view their own rows.
 ## 8) Background style
 
 - UI background now uses `static/sharda_university_requested.png` (image name kept exactly as requested) with gradient/pattern overlay for readability.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+set GMAIL_APP_PASS=auszdbxschesslig
